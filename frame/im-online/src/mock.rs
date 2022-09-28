@@ -227,7 +227,7 @@ impl Config for Runtime {
 	type Event = Event;
 	type ValidatorSet = Historical;
 	type NextSessionRotation = TestNextSessionRotation;
-	type Staking = ();
+	type OnLivenessHandler = ();
 	type ReportUnresponsiveness = OffenceHandler;
 	type UnsignedPriority = UnsignedPriority;
 	type WeightInfo = ();
