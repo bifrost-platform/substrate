@@ -352,7 +352,7 @@ pub mod pallet {
 		type NextSessionRotation: EstimateNextSessionRotation<Self::BlockNumber>;
 
 		/// A type to set validator status, which is online/offline
-		type Staking: ValidatorStatusHandle<Self::AccountId>;
+		type Staking: ValidatorLivenessHandler<Self::AccountId>;
 
 		/// A type that gives us the ability to submit unresponsiveness offence reports.
 		type ReportUnresponsiveness: ReportOffence<
@@ -981,7 +981,7 @@ impl<Offender: Clone> Offence<Offender> for UnresponsivenessOffence<Offender> {
 	}
 }
 
-pub trait ValidatorStatusHandle<AccountId> {
+pub trait ValidatorLivenessHandler<AccountId> {
 
 	fn set_offline(controller: AccountId);
 
@@ -989,7 +989,7 @@ pub trait ValidatorStatusHandle<AccountId> {
 }
 
 // For test
-impl<AccountId> ValidatorStatusHandle<AccountId> for () {
+impl<AccountId> ValidatorLivenessHandler<AccountId> for () {
 	fn set_offline(_controller: AccountId) {}
 
 	fn set_online(_controller: AccountId) {}
