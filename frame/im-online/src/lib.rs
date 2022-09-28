@@ -351,6 +351,9 @@ pub mod pallet {
 		/// chance the authority will produce a block and they won't be necessary.
 		type NextSessionRotation: EstimateNextSessionRotation<Self::BlockNumber>;
 
+		/// A type to set validator status, which is online/offline
+		type Staking: ValidatorStatusHandle<Self::AccountId>;
+
 		/// A type that gives us the ability to submit unresponsiveness offence reports.
 		type ReportUnresponsiveness: ReportOffence<
 			Self::AccountId,
@@ -967,4 +970,18 @@ impl<Offender: Clone> Offence<Offender> for UnresponsivenessOffence<Offender> {
 			Perbill::default()
 		}
 	}
+}
+
+pub trait ValidatorStatusHandle<AccountId> {
+
+	fn set_offline(controller: AccountId);
+
+	fn set_online(controller: AccountId);
+}
+
+// For test
+impl<AccountId> ValidatorStatusHandle<AccountId> for () {
+	fn set_offline(_controller: AccountId) {}
+
+	fn set_online(_controller: AccountId) {}
 }
