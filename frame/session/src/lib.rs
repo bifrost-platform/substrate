@@ -386,7 +386,8 @@ pub mod pallet {
 			+ Parameter
 			+ MaybeSerializeDeserialize
 			+ MaxEncodedLen
-			+ TryFrom<Self::AccountId>;
+			+ TryFrom<Self::AccountId>
+			+ Into<Self::AccountId>;
 
 		/// A conversion from account ID to validator ID.
 		///

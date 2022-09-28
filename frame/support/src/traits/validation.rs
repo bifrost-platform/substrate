@@ -31,7 +31,7 @@ use sp_std::prelude::*;
 /// Something that can give information about the current validator set.
 pub trait ValidatorSet<AccountId> {
 	/// Type for representing validator id in a session.
-	type ValidatorId: Parameter + MaxEncodedLen;
+	type ValidatorId: Parameter + MaxEncodedLen + Into<AccountId>;
 	/// A type for converting `AccountId` to `ValidatorId`.
 	type ValidatorIdOf: Convert<AccountId, Option<Self::ValidatorId>>;
 

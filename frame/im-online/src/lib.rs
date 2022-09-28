@@ -635,8 +635,17 @@ impl<T: Config> Pallet<T> {
 	fn is_online_aux(authority_index: AuthIndex, authority: &ValidatorId<T>) -> bool {
 		let current_session = T::ValidatorSet::session_index();
 
-		ReceivedHeartbeats::<T>::contains_key(&current_session, &authority_index) ||
-			AuthoredBlocks::<T>::get(&current_session, authority) != 0
+		let is_online = ReceivedHeartbeats::<T>::contains_key(&current_session, &authority_index) ||
+			AuthoredBlocks::<T>::get(&current_session, authority) != 0;
+
+		let authority_clone = authority.clone();
+		if is_online {
+			T::Staking::set_online(authority_clone.into());
+		} else {
+			T::Staking::set_offline(authority_clone.into());
+		}
+
+		is_online
 	}
 
 	/// Returns `true` if a heartbeat has been received for the authority at `authority_index` in
