@@ -634,18 +634,8 @@ impl<T: Config> Pallet<T> {
 
 	fn is_online_aux(authority_index: AuthIndex, authority: &ValidatorId<T>) -> bool {
 		let current_session = T::ValidatorSet::session_index();
-
-		let is_online = ReceivedHeartbeats::<T>::contains_key(&current_session, &authority_index)
-			|| AuthoredBlocks::<T>::get(&current_session, authority) != 0;
-
-		let authority_clone = authority.clone();
-		if is_online {
-			T::OnLivenessHandler::set_online(authority_clone.into());
-		} else {
-			T::OnLivenessHandler::set_offline(authority_clone.into());
-		}
-
-		is_online
+		ReceivedHeartbeats::<T>::contains_key(&current_session, &authority_index)
+			|| AuthoredBlocks::<T>::get(&current_session, authority) != 0
 	}
 
 	/// Returns `true` if a heartbeat has been received for the authority at `authority_index` in
@@ -919,6 +909,9 @@ impl<T: Config> OneSessionHandler<T::AccountId> for Pallet<T> {
 		if offenders.is_empty() {
 			Self::deposit_event(Event::<T>::AllGood);
 		} else {
+			for offender in offenders.clone() {
+				T::OnLivenessHandler::set_offline(offender.0.into());
+			}
 			Self::deposit_event(Event::<T>::SomeOffline { offline: offenders.clone() });
 
 			let validator_set_count = keys.len() as u32;
