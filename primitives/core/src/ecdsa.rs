@@ -123,7 +123,7 @@ impl sp_std::convert::TryFrom<&[u8]> for Public {
 
 	fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
 		if data.len() != Self::LEN {
-			return Err(())
+			return Err(());
 		}
 		let mut r = [0u8; Self::LEN];
 		r.copy_from_slice(data);
@@ -187,7 +187,9 @@ impl<'de> Deserialize<'de> for Public {
 
 /// A signature (a 512-bit value, plus 8 bits for recovery ID).
 #[cfg_attr(feature = "full_crypto", derive(Hash))]
-#[derive(Encode, Decode, MaxEncodedLen, PassByInner, TypeInfo, PartialEq, Eq)]
+#[derive(
+	Encode, Decode, MaxEncodedLen, PassByInner, TypeInfo, PartialEq, Eq, PartialOrd, Ord, Copy,
+)]
 pub struct Signature(pub [u8; 65]);
 
 impl sp_std::convert::TryFrom<&[u8]> for Signature {
@@ -472,7 +474,7 @@ impl TraitPair for Pair {
 	fn verify_weak<P: AsRef<[u8]>, M: AsRef<[u8]>>(sig: &[u8], message: M, pubkey: P) -> bool {
 		let message = libsecp256k1::Message::parse(&blake2_256(message.as_ref()));
 		if sig.len() != 65 {
-			return false
+			return false;
 		}
 		let (sig, ri) = match parse_signature_standard(&sig) {
 			Ok(sigri) => sigri,
