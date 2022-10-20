@@ -962,16 +962,17 @@ impl<Offender: Clone> Offence<Offender> for UnresponsivenessOffence<Offender> {
 		self.session_index
 	}
 
-	fn slash_fraction(offenders: u32, validator_set_count: u32) -> Perbill {
-		// the formula is min((3 * (k - (n / 10 + 1))) / n, 1) * 0.07
-		// basically, 10% can be offline with no slash, but after that, it linearly climbs up to 7%
-		// when 13/30 are offline (around 5% when 1/3 are offline).
-		if let Some(threshold) = offenders.checked_sub(validator_set_count / 10 + 1) {
-			let x = Perbill::from_rational(3 * threshold, validator_set_count);
-			x.saturating_mul(Perbill::from_percent(7))
-		} else {
-			Perbill::default()
-		}
+	fn slash_fraction(_offenders: u32, _validator_set_count: u32) -> Perbill {
+		// // the formula is min((3 * (k - (n / 10 + 1))) / n, 1) * 0.07
+		// // basically, 10% can be offline with no slash, but after that, it linearly climbs up to 7%
+		// // when 13/30 are offline (around 5% when 1/3 are offline).
+		// if let Some(threshold) = offenders.checked_sub(validator_set_count / 10 + 1) {
+		// 	let x = Perbill::from_rational(3 * threshold, validator_set_count);
+		// 	x.saturating_mul(Perbill::from_percent(7))
+		// } else {
+		// 	Perbill::default()
+		// }
+		Perbill::from_percent(10)
 	}
 }
 
