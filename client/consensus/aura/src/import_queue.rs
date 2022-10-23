@@ -164,7 +164,7 @@ where
 				e,
 			);
 
-			return Ok(())
+			return Ok(());
 		}
 
 		let inherent_res = self
@@ -241,15 +241,17 @@ where
 
 					inherent_data.aura_replace_inherent_data(slot);
 
-					// skip the inherents verification if the runtime API is old.
-					if self
-						.client
-						.runtime_api()
-						.has_api_with::<dyn BlockBuilderApi<B>, _>(
-							&BlockId::Hash(parent_hash),
-							|v| v >= 2,
-						)
-						.map_err(|e| e.to_string())?
+					// skip the inherents verification if the runtime API is old or not expected to
+					// exist.
+					if !block.state_action.skip_execution_checks()
+						&& self
+							.client
+							.runtime_api()
+							.has_api_with::<dyn BlockBuilderApi<B>, _>(
+								&BlockId::Hash(parent_hash),
+								|v| v >= 2,
+							)
+							.map_err(|e| e.to_string())?
 					{
 						self.check_inherents(
 							new_block.clone(),
@@ -285,8 +287,9 @@ where
 						))
 					})
 					.find_map(|l| match l {
-						ConsensusLog::AuthoritiesChange(a) =>
-							Some(vec![(well_known_cache_keys::AUTHORITIES, a.encode())]),
+						ConsensusLog::AuthoritiesChange(a) => {
+							Some(vec![(well_known_cache_keys::AUTHORITIES, a.encode())])
+						},
 						_ => None,
 					});
 
