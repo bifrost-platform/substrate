@@ -245,10 +245,12 @@ where
 
 	fn get_global_const(&mut self, name: &str) -> Result<Option<Value>> {
 		match &mut self.strategy {
-			Strategy::FastInstanceReuse { instance_wrapper, .. } =>
-				instance_wrapper.get_global_val(name),
-			Strategy::RecreateInstance(ref mut instance_creator) =>
-				instance_creator.instantiate()?.get_global_val(name),
+			Strategy::FastInstanceReuse { instance_wrapper, .. } => {
+				instance_wrapper.get_global_val(name)
+			},
+			Strategy::RecreateInstance(ref mut instance_creator) => {
+				instance_creator.instantiate()?.get_global_val(name)
+			},
 		}
 	}
 
@@ -259,8 +261,9 @@ where
 				// associated with it.
 				None
 			},
-			Strategy::FastInstanceReuse { instance_wrapper, .. } =>
-				Some(instance_wrapper.base_ptr()),
+			Strategy::FastInstanceReuse { instance_wrapper, .. } => {
+				Some(instance_wrapper.base_ptr())
+			},
 		}
 	}
 }
@@ -325,13 +328,19 @@ fn common_config(semantics: &Semantics) -> std::result::Result<wasmtime::Config,
 		.profiler(profiler)
 		.map_err(|e| WasmError::Instantiation(format!("fail to set profiler: {}", e)))?;
 
-	if let Some(DeterministicStackLimit { native_stack_max, .. }) =
-		semantics.deterministic_stack_limit
-	{
-		config
-			.max_wasm_stack(native_stack_max as usize)
-			.map_err(|e| WasmError::Other(format!("cannot set max wasm stack: {}", e)))?;
-	}
+	let native_stack_max = match semantics.deterministic_stack_limit {
+		Some(DeterministicStackLimit { native_stack_max, .. }) => native_stack_max,
+
+		// In `wasmtime` 0.35 the default stack size limit was changed from 1MB to 512KB.
+		//
+		// This broke at least one parachain which depended on the original 1MB limit,
+		// so here we restore it to what it was originally.
+		None => 1024 * 1024,
+	};
+
+	config
+		.max_wasm_stack(native_stack_max as usize)
+		.map_err(|e| WasmError::Other(format!("cannot set max wasm stack: {:#}", e)))?;
 
 	config.parallel_compilation(semantics.parallel_compilation);
 
