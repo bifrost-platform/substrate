@@ -39,7 +39,7 @@ use log::{debug, error, info, warn};
 use sc_consensus::{BlockImport, JustificationSyncLink};
 use sc_telemetry::{telemetry, TelemetryHandle, CONSENSUS_DEBUG, CONSENSUS_INFO, CONSENSUS_WARN};
 use sp_arithmetic::traits::BaseArithmetic;
-use sp_consensus::{CanAuthorWith, Proposer, SelectChain, SlotData, SyncOracle};
+use sp_consensus::{CanAuthorWith, Proposal, Proposer, SelectChain, SlotData, SyncOracle};
 use sp_consensus_slots::Slot;
 use sp_inherents::CreateInherentDataProviders;
 use sp_runtime::{
@@ -103,7 +103,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 	type Proposer: Proposer<B> + Send;
 
 	/// Data associated with a slot claim.
-	type Claim: Send + 'static;
+	type Claim: Send + Sync + 'static;
 
 	/// Epoch data necessary for authoring.
 	type EpochData: Send + Sync + 'static;
@@ -183,6 +183,70 @@ pub trait SimpleSlotWorker<B: BlockT> {
 	/// Remaining duration for proposing.
 	fn proposing_remaining_duration(&self, slot_info: &SlotInfo<B>) -> Duration;
 
+	/// Propose a block by `Proposer`.
+	async fn propose(
+		&mut self,
+		proposer: Self::Proposer,
+		claim: &Self::Claim,
+		slot_info: SlotInfo<B>,
+		proposing_remaining: Delay,
+	) -> Option<
+		Proposal<
+			B,
+			<Self::Proposer as Proposer<B>>::Transaction,
+			<Self::Proposer as Proposer<B>>::Proof,
+		>,
+	> {
+		let slot = slot_info.slot;
+		let telemetry = self.telemetry();
+		let logging_target = self.logging_target();
+		let proposing_remaining_duration = self.proposing_remaining_duration(&slot_info);
+		let logs = self.pre_digest_data(slot, claim);
+
+		// deadline our production to 98% of the total time left for proposing. As we deadline
+		// the proposing below to the same total time left, the 2% margin should be enough for
+		// the result to be returned.
+		let proposing = proposer
+			.propose(
+				slot_info.inherent_data,
+				sp_runtime::generic::Digest { logs },
+				proposing_remaining_duration.mul_f32(0.98),
+				None,
+			)
+			.map_err(|e| sp_consensus::Error::ClientImport(e.to_string()));
+
+		let proposal = match futures::future::select(proposing, proposing_remaining).await {
+			Either::Left((Ok(p), _)) => p,
+			Either::Left((Err(err), _)) => {
+				warn!(target: logging_target, "Proposing failed: {}", err);
+
+				return None;
+			},
+			Either::Right(_) => {
+				info!(
+					target: logging_target,
+					"⌛️ Discarding proposal for slot {}; block production took too long", slot,
+				);
+				// If the node was compiled with debug, tell the user to use release optimizations.
+				#[cfg(build_type = "debug")]
+				info!(
+					target: logging_target,
+					"👉 Recompile your node in `--release` mode to mitigate this problem.",
+				);
+				telemetry!(
+					telemetry;
+					CONSENSUS_INFO;
+					"slots.discarding_proposal_took_too_long";
+					"slot" => *slot,
+				);
+
+				return None;
+			},
+		};
+
+		Some(proposal)
+	}
+
 	/// Implements [`SlotWorker::on_slot`].
 	async fn on_slot(
 		&mut self,
@@ -203,7 +267,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 				"Skipping proposal slot {} since there's no time left to propose", slot,
 			);
 
-			return None
+			return None;
 		} else {
 			Delay::new(proposing_remaining_duration)
 		};
@@ -213,7 +277,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 			Err(err) => {
 				warn!(
 					target: logging_target,
-					"Unable to fetch epoch data at block {:?}: {}",
+					"Unable to fetch auxiliary data for block {:?}: {}",
 					slot_info.chain_head.hash(),
 					err,
 				);
@@ -226,7 +290,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 					"err" => ?err,
 				);
 
-				return None
+				return None;
 			},
 		};
 
@@ -234,9 +298,9 @@ pub trait SimpleSlotWorker<B: BlockT> {
 
 		let authorities_len = self.authorities_len(&epoch_data);
 
-		if !self.force_authoring() &&
-			self.sync_oracle().is_offline() &&
-			authorities_len.map(|a| a > 1).unwrap_or(false)
+		if !self.force_authoring()
+			&& self.sync_oracle().is_offline()
+			&& authorities_len.map(|a| a > 1).unwrap_or(false)
 		{
 			debug!(target: logging_target, "Skipping proposal slot. Waiting for the network.");
 			telemetry!(
@@ -246,13 +310,13 @@ pub trait SimpleSlotWorker<B: BlockT> {
 				"authorities_len" => authorities_len,
 			);
 
-			return None
+			return None;
 		}
 
 		let claim = self.claim_slot(&slot_info.chain_head, slot, &epoch_data).await?;
 
 		if self.should_backoff(slot, &slot_info.chain_head) {
-			return None
+			return None;
 		}
 
 		debug!(target: logging_target, "Starting authorship at slot: {slot}");
@@ -272,52 +336,11 @@ pub trait SimpleSlotWorker<B: BlockT> {
 					"err" => ?err
 				);
 
-				return None
+				return None;
 			},
 		};
 
-		let logs = self.pre_digest_data(slot, &claim);
-
-		// deadline our production to 98% of the total time left for proposing. As we deadline
-		// the proposing below to the same total time left, the 2% margin should be enough for
-		// the result to be returned.
-		let proposing = proposer
-			.propose(
-				slot_info.inherent_data,
-				sp_runtime::generic::Digest { logs },
-				proposing_remaining_duration.mul_f32(0.98),
-				None,
-			)
-			.map_err(|e| sp_consensus::Error::ClientImport(e.to_string()));
-
-		let proposal = match futures::future::select(proposing, proposing_remaining).await {
-			Either::Left((Ok(p), _)) => p,
-			Either::Left((Err(err), _)) => {
-				warn!(target: logging_target, "Proposing failed: {}", err);
-
-				return None
-			},
-			Either::Right(_) => {
-				info!(
-					target: logging_target,
-					"⌛️ Discarding proposal for slot {}; block production took too long", slot,
-				);
-				// If the node was compiled with debug, tell the user to use release optimizations.
-				#[cfg(build_type = "debug")]
-				info!(
-					target: logging_target,
-					"👉 Recompile your node in `--release` mode to mitigate this problem.",
-				);
-				telemetry!(
-					telemetry;
-					CONSENSUS_INFO;
-					"slots.discarding_proposal_took_too_long";
-					"slot" => *slot,
-				);
-
-				return None
-			},
-		};
+		let proposal = self.propose(proposer, &claim, slot_info, proposing_remaining).await?;
 
 		let (block, storage_proof) = (proposal.block, proposal.proof);
 		let (header, body) = block.deconstruct();
@@ -340,7 +363,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 			Err(err) => {
 				warn!(target: logging_target, "Failed to create block import params: {}", err);
 
-				return None
+				return None;
 			},
 		};
 
@@ -465,13 +488,13 @@ pub async fn start_slot_worker<B, C, W, T, SO, CIDP, CAW, Proof>(
 			Ok(r) => r,
 			Err(e) => {
 				warn!(target: "slots", "Error while polling for next slot: {}", e);
-				return
+				return;
 			},
 		};
 
 		if sync_oracle.is_major_syncing() {
 			debug!(target: "slots", "Skipping proposal slot due to sync.");
-			continue
+			continue;
 		}
 
 		if let Err(err) =
@@ -602,7 +625,7 @@ pub fn proposing_remaining_duration<Block: BlockT>(
 
 	// If parent is genesis block, we don't require any lenience factor.
 	if slot_info.chain_head.number().is_zero() {
-		return proposing_duration
+		return proposing_duration;
 	}
 
 	let parent_slot = match parent_slot {
@@ -765,7 +788,7 @@ where
 	) -> bool {
 		// This should not happen, but we want to keep the previous behaviour if it does.
 		if slot_now <= chain_head_slot {
-			return false
+			return false;
 		}
 
 		let unfinalized_block_length = chain_head_number - finalized_number;
