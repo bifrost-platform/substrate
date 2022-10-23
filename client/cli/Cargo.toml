@@ -50,4 +50,5 @@ sp-version = { version = "4.0.0-dev", path = "../../primitives/version" }
 tempfile = "3.1.0"
 
 [features]
+default = ["wasmtime"]
 wasmtime = ["sc-service/wasmtime"]
