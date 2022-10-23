@@ -342,20 +342,13 @@ where
 		block_size_limit: Option<usize>,
 	) -> Result<Proposal<Block, backend::TransactionFor<B, Block>, PR::Proof>, sp_blockchain::Error>
 	{
-		info!("propose_with function starts");
 		let propose_with_start = time::Instant::now();
-		info!("propose_with function starts: 1");
-		info!("ParentId: {}, ProofRecord: {}", &self.parent_id, PR::ENABLED);
 		let mut block_builder =
 			self.client.new_block_at(&self.parent_id, inherent_digests, PR::ENABLED)?;
-		info!("propose_with function starts: 2");
 
 		let create_inherents_start = time::Instant::now();
-		info!("propose_with function starts: 3");
 		let inherents = block_builder.create_inherents(inherent_data)?;
-		info!("propose_with function starts: 4");
 		let create_inherents_end = time::Instant::now();
-		info!("propose_with function starts: 5");
 
 		self.metrics.report(|metrics| {
 			metrics.create_inherents_time.observe(
@@ -364,7 +357,6 @@ where
 					.as_secs_f64(),
 			);
 		});
-		info!("propose_with function starts: 6");
 
 		for inherent in inherents {
 			match block_builder.push(inherent) {
@@ -383,31 +375,21 @@ where
 				Ok(_) => {},
 			}
 		}
-		info!("propose_with function starts: 7");
 
 		// proceed with transactions
 		// We calculate soft deadline used only in case we start skipping transactions.
 		let now = (self.now)();
-		info!("propose_with function starts: 8");
 		let left = deadline.saturating_duration_since(now);
-		info!("propose_with function starts: 9");
 		let left_micros: u64 = left.as_micros().saturated_into();
-		info!("propose_with function starts: 10");
 		let soft_deadline =
 			now + time::Duration::from_micros(self.soft_deadline_percent.mul_floor(left_micros));
-		info!("propose_with function starts: 11");
 		let block_timer = time::Instant::now();
-		info!("propose_with function starts: 12");
 		let mut skipped = 0;
-		info!("propose_with function starts: 13");
 		let mut unqueue_invalid = Vec::new();
-		info!("propose_with function starts: 14");
 
 		let mut t1 = self.transaction_pool.ready_at(self.parent_number).fuse();
-		info!("propose_with function starts: 15");
 		let mut t2 =
 			futures_timer::Delay::new(deadline.saturating_duration_since((self.now)()) / 8).fuse();
-		info!("propose_with function starts: 16");
 
 		let mut pending_iterator = select! {
 			res = t1 => res,
@@ -420,14 +402,11 @@ where
 				self.transaction_pool.ready()
 			},
 		};
-		info!("propose_with function starts: 17");
 
 		let block_size_limit = block_size_limit.unwrap_or(self.default_block_size_limit);
-		info!("propose_with function starts: 18");
 
 		debug!("Attempting to push transactions from the pool.");
 		debug!("Pool status: {:?}", self.transaction_pool.status());
-		info!("propose_with function starts: 19");
 		let mut transaction_pushed = false;
 
 		let end_reason = loop {
@@ -436,10 +415,8 @@ where
 			} else {
 				break EndProposingReason::NoMoreTransactions;
 			};
-			info!("propose_with function starts: 20");
 
 			let now = (self.now)();
-			info!("propose_with function starts: 21");
 			if now > deadline {
 				debug!(
 					"Consensus deadline reached when pushing block transactions, \
@@ -447,20 +424,14 @@ where
 				);
 				break EndProposingReason::HitDeadline;
 			}
-			info!("propose_with function starts: 22");
 
 			let pending_tx_data = pending_tx.data().clone();
-			info!("propose_with function starts: 23");
 			let pending_tx_hash = pending_tx.hash().clone();
-			info!("propose_with function starts: 24");
 
 			let block_size =
 				block_builder.estimate_block_size(self.include_proof_in_block_size_estimation);
-			info!("propose_with function starts: 25");
 			if block_size + pending_tx_data.encoded_size() > block_size_limit {
-				info!("propose_with function starts: 26");
 				pending_iterator.report_invalid(&pending_tx);
-				info!("propose_with function starts: 27");
 				if skipped < MAX_SKIPPED_TRANSACTIONS {
 					skipped += 1;
 					debug!(
@@ -520,9 +491,7 @@ where
 					unqueue_invalid.push(pending_tx_hash);
 				},
 			}
-			info!("propose_with function starts: 29");
 		};
-		info!("propose_with function starts: 30");
 
 		if matches!(end_reason, EndProposingReason::HitBlockSizeLimit) && !transaction_pushed {
 			warn!(
@@ -530,13 +499,10 @@ where
 				block_size_limit,
 			);
 		}
-		info!("propose_with function starts: 31");
 
 		self.transaction_pool.remove_invalid(&unqueue_invalid);
-		info!("propose_with function starts: 32");
 
 		let (block, storage_changes, proof) = block_builder.build()?.into_inner();
-		info!("propose_with function starts: 33");
 
 		self.metrics.report(|metrics| {
 			metrics.number_of_transactions.set(block.extrinsics().len() as u64);
@@ -544,7 +510,6 @@ where
 
 			metrics.report_end_proposing_reason(end_reason);
 		});
-		info!("propose_with function starts: 34");
 
 		info!(
 			"🎁 Prepared block for proposing at {} ({} ms) [hash: {:?}; parent_hash: {}; extrinsics ({}): [{}]]",

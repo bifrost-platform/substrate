@@ -273,15 +273,10 @@ where
 
 	/// Start the execution of a particular block.
 	pub fn initialize_block(header: &System::Header) {
-		log::info!("initialize block 1");
 		sp_io::init_tracing();
-		log::info!("initialize block 2");
 		sp_tracing::enter_span!(sp_tracing::Level::TRACE, "init_block");
-		log::info!("initialize block 3");
 		let digests = Self::extract_pre_digest(&header);
-		log::info!("initialize block 4");
 		Self::initialize_block_impl(header.number(), header.parent_hash(), &digests);
-		log::info!("initialize block 5");
 	}
 
 	fn extract_pre_digest(header: &System::Header) -> Digest {
@@ -299,36 +294,28 @@ where
 		parent_hash: &System::Hash,
 		digest: &Digest,
 	) {
-		log::info!("initialize block impl 1");
 		// Reset events before apply runtime upgrade hook.
 		// This is required to preserve events from runtime upgrade hook.
 		// This means the format of all the event related storages must always be compatible.
 		<frame_system::Pallet<System>>::reset_events();
-		log::info!("initialize block impl 2");
 
 		let mut weight = 0;
 		if Self::runtime_upgraded() {
 			weight = weight.saturating_add(Self::execute_on_runtime_upgrade());
 		}
-		log::info!("initialize block impl 3");
 		<frame_system::Pallet<System>>::initialize(block_number, parent_hash, digest);
-		log::info!("initialize block impl 4");
 		weight = weight.saturating_add(<AllPalletsWithSystem as OnInitialize<
 			System::BlockNumber,
 		>>::on_initialize(*block_number));
-		log::info!("initialize block impl 5");
 		weight = weight.saturating_add(
 			<System::BlockWeights as frame_support::traits::Get<_>>::get().base_block,
 		);
-		log::info!("initialize block impl 6");
 		<frame_system::Pallet<System>>::register_extra_weight_unchecked(
 			weight,
 			DispatchClass::Mandatory,
 		);
-		log::info!("initialize block impl 7");
 
 		frame_system::Pallet::<System>::note_finished_initialize();
-		log::info!("initialize block impl 8");
 	}
 
 	/// Returns if the runtime was upgraded since the last time this function was called.
@@ -366,9 +353,7 @@ where
 
 	/// Actually execute all transitions for `block`.
 	pub fn execute_block(block: Block) {
-		log::info!("execute block 1");
 		sp_io::init_tracing();
-		log::info!("execute block 2");
 		sp_tracing::within_span! {
 			sp_tracing::info_span!("execute_block", ?block);
 
@@ -390,7 +375,6 @@ where
 			// any final checks
 			Self::final_checks(&header);
 		}
-		log::info!("execute block 3");
 	}
 
 	/// Execute given extrinsics and take care of post-extrinsics book-keeping.
