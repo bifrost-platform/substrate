@@ -369,8 +369,8 @@ impl DatabaseSource {
 				*paritydb_path = p.into();
 				true
 			},
-			DatabaseSource::RocksDb { ref mut path, .. } |
-			DatabaseSource::ParityDb { ref mut path } => {
+			DatabaseSource::RocksDb { ref mut path, .. }
+			| DatabaseSource::ParityDb { ref mut path } => {
 				*path = p.into();
 				true
 			},
@@ -505,15 +505,16 @@ impl<Block: BlockT> sc_client_api::blockchain::HeaderBackend<Block> for Blockcha
 			BlockId::Hash(h) => {
 				let mut cache = self.header_cache.lock();
 				if let Some(result) = cache.get_refresh(h) {
-					return Ok(result.clone())
+					return Ok(result.clone());
 				}
 				let header =
 					utils::read_header(&*self.db, columns::KEY_LOOKUP, columns::HEADER, id)?;
 				cache_header(&mut cache, h.clone(), header.clone());
 				Ok(header)
 			},
-			BlockId::Number(_) =>
-				utils::read_header(&*self.db, columns::KEY_LOOKUP, columns::HEADER, id),
+			BlockId::Number(_) => {
+				utils::read_header(&*self.db, columns::KEY_LOOKUP, columns::HEADER, id)
+			},
 		}
 	}
 
@@ -564,11 +565,12 @@ impl<Block: BlockT> sc_client_api::blockchain::Backend<Block> for BlockchainDb<B
 		match self.transaction_storage {
 			TransactionStorageMode::BlockBody => match Decode::decode(&mut &body[..]) {
 				Ok(body) => Ok(Some(body)),
-				Err(err) =>
+				Err(err) => {
 					return Err(sp_blockchain::Error::Backend(format!(
 						"Error decoding body: {}",
 						err
-					))),
+					)))
+				},
 			},
 			TransactionStorageMode::StorageChain => {
 				match Vec::<ExtrinsicHeader>::decode(&mut &body[..]) {
@@ -583,11 +585,12 @@ impl<Block: BlockT> sc_client_api::blockchain::Backend<Block> for BlockchainDb<B
 												utils::join_input(data.as_ref(), t.as_ref());
 											Block::Extrinsic::decode(&mut input)
 										},
-										None =>
+										None => {
 											return Err(sp_blockchain::Error::Backend(format!(
 												"Missing indexed transaction {:?}",
 												indexed_hash
-											))),
+											)))
+										},
 									}
 								} else {
 									Block::Extrinsic::decode(&mut data.as_ref())
@@ -602,11 +605,12 @@ impl<Block: BlockT> sc_client_api::blockchain::Backend<Block> for BlockchainDb<B
 							.collect();
 						Ok(Some(extrinsics?))
 					},
-					Err(err) =>
+					Err(err) => {
 						return Err(sp_blockchain::Error::Backend(format!(
 							"Error decoding body list: {}",
 							err
-						))),
+						)))
+					},
 				}
 			},
 		}
@@ -616,11 +620,12 @@ impl<Block: BlockT> sc_client_api::blockchain::Backend<Block> for BlockchainDb<B
 		match read_db(&*self.db, columns::KEY_LOOKUP, columns::JUSTIFICATIONS, id)? {
 			Some(justifications) => match Decode::decode(&mut &justifications[..]) {
 				Ok(justifications) => Ok(Some(justifications)),
-				Err(err) =>
+				Err(err) => {
 					return Err(sp_blockchain::Error::Backend(format!(
 						"Error decoding justifications: {}",
 						err
-					))),
+					)))
+				},
 			},
 			None => Ok(None),
 		}
@@ -661,21 +666,23 @@ impl<Block: BlockT> sc_client_api::blockchain::Backend<Block> for BlockchainDb<B
 							if indexed_hash != Default::default() {
 								match self.db.get(columns::TRANSACTION, indexed_hash.as_ref()) {
 									Some(t) => transactions.push(t),
-									None =>
+									None => {
 										return Err(sp_blockchain::Error::Backend(format!(
 											"Missing indexed transaction {:?}",
 											indexed_hash
-										))),
+										)))
+									},
 								}
 							}
 						}
 						Ok(Some(transactions))
 					},
-					Err(err) =>
+					Err(err) => {
 						return Err(sp_blockchain::Error::Backend(format!(
 							"Error decoding body list: {}",
 							err
-						))),
+						)))
+					},
 				}
 			},
 		}
@@ -741,8 +748,9 @@ impl<Block: BlockT> BlockImportOperation<Block> {
 			count += 1;
 			let key = crate::offchain::concatenate_prefix_and_key(&prefix, &key);
 			match value_operation {
-				OffchainOverlayedChange::SetValue(val) =>
-					transaction.set_from_vec(columns::OFFCHAIN, &key, val),
+				OffchainOverlayedChange::SetValue(val) => {
+					transaction.set_from_vec(columns::OFFCHAIN, &key, val)
+				},
 				OffchainOverlayedChange::Remove => transaction.remove(columns::OFFCHAIN, &key),
 			}
 		}
@@ -767,7 +775,7 @@ impl<Block: BlockT> BlockImportOperation<Block> {
 		state_version: StateVersion,
 	) -> ClientResult<Block::Hash> {
 		if storage.top.keys().any(|k| well_known_keys::is_child_storage_key(&k)) {
-			return Err(sp_blockchain::Error::InvalidState.into())
+			return Err(sp_blockchain::Error::InvalidState.into());
 		}
 
 		let child_delta = storage.children_default.iter().map(|(_storage_key, child_content)| {
@@ -1088,9 +1096,9 @@ impl<Block: BlockT> Backend<Block> {
 
 		// Older DB versions have no last state key. Check if the state is available and set it.
 		let info = backend.blockchain.info();
-		if info.finalized_state.is_none() &&
-			info.finalized_hash != Default::default() &&
-			sc_client_api::Backend::have_state_at(
+		if info.finalized_state.is_none()
+			&& info.finalized_hash != Default::default()
+			&& sc_client_api::Backend::have_state_at(
 				&backend,
 				&info.finalized_hash,
 				info.finalized_number,
@@ -1126,11 +1134,11 @@ impl<Block: BlockT> Backend<Block> {
 
 		let meta = self.blockchain.meta.read();
 
-		if meta.best_number > best_number &&
-			(meta.best_number - best_number).saturated_into::<u64>() >
-				self.canonicalization_delay
+		if meta.best_number > best_number
+			&& (meta.best_number - best_number).saturated_into::<u64>()
+				> self.canonicalization_delay
 		{
-			return Err(sp_blockchain::Error::SetHeadTooOld.into())
+			return Err(sp_blockchain::Error::SetHeadTooOld.into());
 		}
 
 		let parent_exists =
@@ -1149,7 +1157,7 @@ impl<Block: BlockT> Backend<Block> {
 						(&r.number, &r.hash)
 					);
 
-					return Err(::sp_blockchain::Error::NotInFinalizedChain.into())
+					return Err(::sp_blockchain::Error::NotInFinalizedChain.into());
 				}
 
 				retracted.push(r.hash.clone());
@@ -1187,15 +1195,15 @@ impl<Block: BlockT> Backend<Block> {
 	) -> ClientResult<()> {
 		let last_finalized =
 			last_finalized.unwrap_or_else(|| self.blockchain.meta.read().finalized_hash);
-		if last_finalized != self.blockchain.meta.read().genesis_hash &&
-			*header.parent_hash() != last_finalized
+		if last_finalized != self.blockchain.meta.read().genesis_hash
+			&& *header.parent_hash() != last_finalized
 		{
 			return Err(sp_blockchain::Error::NonSequentialFinalization(format!(
 				"Last finalized {:?} not parent of {:?}",
 				last_finalized,
 				header.hash()
 			))
-			.into())
+			.into());
 		}
 		Ok(())
 	}
@@ -1238,7 +1246,7 @@ impl<Block: BlockT> Backend<Block> {
 			let new_canonical = number_u64 - self.canonicalization_delay;
 
 			if new_canonical <= self.storage.state_db.best_canonical().unwrap_or(0) {
-				return Ok(())
+				return Ok(());
 			}
 			let hash = if new_canonical == number_u64 {
 				hash
@@ -1255,7 +1263,7 @@ impl<Block: BlockT> Backend<Block> {
 				})?
 			};
 			if !sc_client_api::Backend::have_state_at(self, &hash, new_canonical.saturated_into()) {
-				return Ok(())
+				return Ok(());
 			}
 
 			trace!(target: "db", "Canonicalize block #{} ({:?})", new_canonical, hash);
@@ -1441,8 +1449,8 @@ impl<Block: BlockT> Backend<Block> {
 				let finalized = number_u64 == 0 || pending_block.leaf_state.is_final();
 				finalized
 			} else {
-				(number.is_zero() && last_finalized_num.is_zero()) ||
-					pending_block.leaf_state.is_final()
+				(number.is_zero() && last_finalized_num.is_zero())
+					|| pending_block.leaf_state.is_final()
 			};
 
 			let header = &pending_block.header;
@@ -1522,11 +1530,9 @@ impl<Block: BlockT> Backend<Block> {
 							&(start, end).encode(),
 						);
 					}
-				} else if number > best_num + One::one() &&
-					number > One::one() && self
-					.blockchain
-					.header(BlockId::hash(parent_hash))?
-					.is_none()
+				} else if number > best_num + One::one()
+					&& number > One::one()
+					&& self.blockchain.header(BlockId::hash(parent_hash))?.is_none()
 				{
 					let gap = (best_num + One::one(), number - One::one());
 					transaction.set(columns::META, meta_keys::BLOCK_GAP, &gap.encode());
@@ -1571,7 +1577,7 @@ impl<Block: BlockT> Backend<Block> {
 				return Err(sp_blockchain::Error::UnknownBlock(format!(
 					"Cannot set head {:?}",
 					set_head
-				)))
+				)));
 			}
 		} else {
 			None
@@ -1629,8 +1635,9 @@ impl<Block: BlockT> Backend<Block> {
 		}
 		transaction.set_from_vec(columns::META, meta_keys::FINALIZED_BLOCK, lookup_key);
 
-		if sc_client_api::Backend::have_state_at(self, &f_hash, f_num) &&
-			self.storage
+		if sc_client_api::Backend::have_state_at(self, &f_hash, f_num)
+			&& self
+				.storage
 				.state_db
 				.best_canonical()
 				.map(|c| f_num.saturated_into::<u64>() > c)
@@ -1709,17 +1716,19 @@ impl<Block: BlockT> Backend<Block> {
 					TransactionStorageMode::BlockBody => {},
 					TransactionStorageMode::StorageChain => {
 						match Vec::<ExtrinsicHeader>::decode(&mut &body[..]) {
-							Ok(body) =>
+							Ok(body) => {
 								for ExtrinsicHeader { indexed_hash, .. } in body {
 									if indexed_hash != Default::default() {
 										transaction.release(columns::TRANSACTION, indexed_hash);
 									}
-								},
-							Err(err) =>
+								}
+							},
+							Err(err) => {
 								return Err(sp_blockchain::Error::Backend(format!(
 									"Error decoding body list: {}",
 									err
-								))),
+								)))
+							},
 						}
 					},
 				}
@@ -1946,17 +1955,17 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 		let last_finalized = self.blockchain.last_finalized()?;
 
 		// We can do a quick check first, before doing a proper but more expensive check
-		if number > self.blockchain.info().finalized_number ||
-			(hash != last_finalized && !is_descendent_of(&hash, &last_finalized)?)
+		if number > self.blockchain.info().finalized_number
+			|| (hash != last_finalized && !is_descendent_of(&hash, &last_finalized)?)
 		{
-			return Err(ClientError::NotInFinalizedChain)
+			return Err(ClientError::NotInFinalizedChain);
 		}
 
 		let justifications = if let Some(mut stored_justifications) =
 			self.blockchain.justifications(block)?
 		{
 			if !stored_justifications.append(justification) {
-				return Err(ClientError::BadJustification("Duplicate consensus engine ID".into()))
+				return Err(ClientError::BadJustification("Duplicate consensus engine ID".into()));
 			}
 			stored_justifications
 		} else {
@@ -2016,52 +2025,64 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 	) -> ClientResult<(NumberFor<Block>, HashSet<Block::Hash>)> {
 		let mut reverted_finalized = HashSet::new();
 
-		let mut best_number = self.blockchain.info().best_number;
-		let mut best_hash = self.blockchain.info().best_hash;
+		let info = self.blockchain.info();
 
-		let finalized = self.blockchain.info().finalized_number;
+		let highest_leaf = self
+			.blockchain
+			.leaves
+			.read()
+			.highest_leaf()
+			.and_then(|(n, h)| h.last().map(|h| (n, *h)));
+
+		let best_number = info.best_number;
+		let best_hash = info.best_hash;
+
+		let finalized = info.finalized_number;
 
 		let revertible = best_number - finalized;
 		let n = if !revert_finalized && revertible < n { revertible } else { n };
 
+		let (n, mut number_to_revert, mut hash_to_revert) = match highest_leaf {
+			Some((l_n, l_h)) => (n + (l_n - best_number), l_n, l_h),
+			None => (n, best_number, best_hash),
+		};
+
 		let mut revert_blocks = || -> ClientResult<NumberFor<Block>> {
 			for c in 0..n.saturated_into::<u64>() {
-				if best_number.is_zero() {
-					return Ok(c.saturated_into::<NumberFor<Block>>())
+				if number_to_revert.is_zero() {
+					return Ok(c.saturated_into::<NumberFor<Block>>());
 				}
 				let mut transaction = Transaction::new();
 				let removed =
-					self.blockchain.header(BlockId::Number(best_number))?.ok_or_else(|| {
+					self.blockchain.header(BlockId::Hash(hash_to_revert))?.ok_or_else(|| {
 						sp_blockchain::Error::UnknownBlock(format!(
-							"Error reverting to {}. Block hash not found.",
-							best_number
+							"Error reverting to {}. Block header not found.",
+							hash_to_revert
 						))
 					})?;
 				let removed_hash = removed.hash();
 
-				let prev_number = best_number.saturating_sub(One::one());
-				let prev_hash = self.blockchain.hash(prev_number)?.ok_or_else(|| {
-					sp_blockchain::Error::UnknownBlock(format!(
-						"Error reverting to {}. Block hash not found.",
-						best_number
-					))
-				})?;
+				let prev_number = number_to_revert.saturating_sub(One::one());
+				let prev_hash =
+					if prev_number == best_number { best_hash } else { *removed.parent_hash() };
 
 				if !self.have_state_at(&prev_hash, prev_number) {
-					return Ok(c.saturated_into::<NumberFor<Block>>())
+					return Ok(c.saturated_into::<NumberFor<Block>>());
 				}
 
 				match self.storage.state_db.revert_one() {
 					Some(commit) => {
 						apply_state_commit(&mut transaction, commit);
 
-						best_number = prev_number;
-						best_hash = prev_hash;
+						number_to_revert = prev_number;
+						hash_to_revert = prev_hash;
 
-						let update_finalized = best_number < finalized;
+						let update_finalized = number_to_revert < finalized;
 
-						let key =
-							utils::number_and_hash_to_lookup_key(best_number.clone(), &best_hash)?;
+						let key = utils::number_and_hash_to_lookup_key(
+							number_to_revert,
+							&hash_to_revert,
+						)?;
 						if update_finalized {
 							transaction.set_from_vec(
 								columns::META,
@@ -2071,12 +2092,14 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 
 							reverted_finalized.insert(removed_hash);
 							if let Some((hash, _)) = self.blockchain.info().finalized_state {
-								if hash == best_hash {
-									if !best_number.is_zero() &&
-										self.have_state_at(&prev_hash, best_number - One::one())
-									{
+								if hash == hash_to_revert {
+									if !number_to_revert.is_zero()
+										&& self.have_state_at(
+											&prev_hash,
+											number_to_revert - One::one(),
+										) {
 										let lookup_key = utils::number_and_hash_to_lookup_key(
-											best_number - One::one(),
+											number_to_revert - One::one(),
 											prev_hash,
 										)?;
 										transaction.set_from_vec(
@@ -2097,13 +2120,16 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 							&mut transaction,
 							columns::META,
 							meta_keys::CHILDREN_PREFIX,
-							best_hash,
+							hash_to_revert,
 						);
 						self.storage.db.commit(transaction)?;
+
+						let is_best = number_to_revert < best_number;
+
 						self.blockchain.update_meta(MetaUpdate {
-							hash: best_hash,
-							number: best_number,
-							is_best: true,
+							hash: hash_to_revert,
+							number: number_to_revert,
+							is_best,
 							is_finalized: update_finalized,
 							with_state: false,
 						});
@@ -2121,7 +2147,7 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 			let mut transaction = Transaction::new();
 			let mut leaves = self.blockchain.leaves.write();
 
-			leaves.revert(best_hash, best_number);
+			leaves.revert(hash_to_revert, number_to_revert);
 			leaves.prepare_transaction(&mut transaction, columns::META, meta_keys::LEAF_PREFIX);
 			self.storage.db.commit(transaction)?;
 
@@ -2137,7 +2163,10 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 		let best_hash = self.blockchain.info().best_hash;
 
 		if best_hash == *hash {
-			return Err(sp_blockchain::Error::Backend(format!("Can't remove best block {:?}", hash)))
+			return Err(sp_blockchain::Error::Backend(format!(
+				"Can't remove best block {:?}",
+				hash
+			)));
 		}
 
 		let hdr = self.blockchain.header_metadata(hash.clone())?;
@@ -2145,7 +2174,7 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 			return Err(sp_blockchain::Error::UnknownBlock(format!(
 				"State already discarded for {:?}",
 				hash
-			)))
+			)));
 		}
 
 		let mut leaves = self.blockchain.leaves.write();
@@ -2153,7 +2182,7 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 			return Err(sp_blockchain::Error::Backend(format!(
 				"Can't remove non-leaf block {:?}",
 				hash
-			)))
+			)));
 		}
 
 		let mut transaction = Transaction::new();
@@ -2193,7 +2222,7 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 					self.import_lock.clone(),
 				);
 				state.disable_syncing();
-				return Ok(state)
+				return Ok(state);
 			}
 		}
 
@@ -2210,7 +2239,7 @@ impl<Block: BlockT> sc_client_api::backend::Backend<Block> for Backend<Block> {
 					return Err(sp_blockchain::Error::UnknownBlock(format!(
 						"State already discarded for {:?}",
 						block
-					)))
+					)));
 				}
 				if let Ok(()) = self.storage.state_db.pin(&hash) {
 					let root = hdr.state_root;
