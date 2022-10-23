@@ -366,7 +366,9 @@ where
 
 	/// Actually execute all transitions for `block`.
 	pub fn execute_block(block: Block) {
+		log::info!("execute block 1");
 		sp_io::init_tracing();
+		log::info!("execute block 2");
 		sp_tracing::within_span! {
 			sp_tracing::info_span!("execute_block", ?block);
 
@@ -388,6 +390,7 @@ where
 			// any final checks
 			Self::final_checks(&header);
 		}
+		log::info!("execute block 3");
 	}
 
 	/// Execute given extrinsics and take care of post-extrinsics book-keeping.
