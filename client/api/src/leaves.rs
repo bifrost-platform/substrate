@@ -134,7 +134,7 @@ where
 	/// will be pruned soon afterwards anyway.
 	pub fn finalize_height(&mut self, number: N) -> FinalizationDisplaced<H, N> {
 		let boundary = if number == N::zero() {
-			return FinalizationDisplaced { leaves: BTreeMap::new() }
+			return FinalizationDisplaced { leaves: BTreeMap::new() };
 		} else {
 			number - N::one()
 		};
@@ -250,6 +250,11 @@ where
 		}
 
 		removed
+	}
+
+	/// Returns the highest leaf and all hashes associated to it.
+	pub fn highest_leaf(&self) -> Option<(N, &[H])> {
+		self.storage.iter().next().map(|(k, v)| (k.0.clone(), &v[..]))
 	}
 }
 
