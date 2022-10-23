@@ -25,6 +25,7 @@ use futures::{
 	lock::Mutex,
 	SinkExt, StreamExt,
 };
+use log::info;
 use std::{marker::PhantomData, pin::Pin, sync::Arc};
 
 use prometheus_endpoint::Registry as PrometheusRegistry;
@@ -238,6 +239,7 @@ where
 						Error::RuntimeApi(format!("Could not get number for block `{:?}`.", at))
 					)?;
 
+				info!("validate_transaction_blocking runtime_api.initialize_block");
 				// The old versions require us to call `initialize_block` before.
 				runtime_api.initialize_block(at, &sp_runtime::traits::Header::new(
 					block_number + sp_runtime::traits::One::one(),
