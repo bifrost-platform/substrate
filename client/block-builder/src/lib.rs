@@ -208,6 +208,7 @@ where
 		let block_id = &self.block_id;
 		let extrinsics = &mut self.extrinsics;
 
+		info!("push starts");
 		self.api.execute_in_transaction(|api| {
 			match api.apply_extrinsic_with_context(
 				block_id,
@@ -232,6 +233,7 @@ where
 	/// supplied by `self.api`, combined as [`BuiltBlock`].
 	/// The storage proof will be `Some(_)` when proof recording was enabled.
 	pub fn build(mut self) -> Result<BuiltBlock<Block, backend::StateBackendFor<B, Block>>, Error> {
+		info!("build starts");
 		let header = self
 			.api
 			.finalize_block_with_context(&self.block_id, ExecutionContext::BlockConstruction)?;
@@ -268,6 +270,7 @@ where
 		&mut self,
 		inherent_data: sp_inherents::InherentData,
 	) -> Result<Vec<Block::Extrinsic>, Error> {
+		info!("create_inherents starts");
 		let block_id = self.block_id;
 		self.api
 			.execute_in_transaction(move |api| {
