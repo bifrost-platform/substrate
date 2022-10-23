@@ -164,7 +164,6 @@ where
 		inherent_digests: Digest,
 		backend: &'a B,
 	) -> Result<Self, Error> {
-		info!("block builder new : 1");
 		let header = <<Block as BlockT>::Header as HeaderT>::new(
 			parent_number + One::one(),
 			Default::default(),
@@ -172,24 +171,18 @@ where
 			parent_hash,
 			inherent_digests,
 		);
-		info!("block builder new : 2");
 
 		let estimated_header_size = header.encoded_size();
-		info!("block builder new : 3");
 
 		let mut api = api.runtime_api();
-		info!("block builder new : 4");
 
 		if record_proof.yes() {
 			api.record_proof();
 		}
-		info!("block builder new : 5");
 
 		let block_id = BlockId::Hash(parent_hash);
-		info!("block builder new : 6");
 
 		api.initialize_block_with_context(&block_id, ExecutionContext::BlockConstruction, &header)?;
-		info!("block builder new : 7");
 
 		Ok(Self {
 			parent_hash,
@@ -208,7 +201,6 @@ where
 		let block_id = &self.block_id;
 		let extrinsics = &mut self.extrinsics;
 
-		info!("push starts");
 		self.api.execute_in_transaction(|api| {
 			match api.apply_extrinsic_with_context(
 				block_id,
@@ -233,7 +225,6 @@ where
 	/// supplied by `self.api`, combined as [`BuiltBlock`].
 	/// The storage proof will be `Some(_)` when proof recording was enabled.
 	pub fn build(mut self) -> Result<BuiltBlock<Block, backend::StateBackendFor<B, Block>>, Error> {
-		info!("build starts");
 		let header = self
 			.api
 			.finalize_block_with_context(&self.block_id, ExecutionContext::BlockConstruction)?;
@@ -270,7 +261,6 @@ where
 		&mut self,
 		inherent_data: sp_inherents::InherentData,
 	) -> Result<Vec<Block::Extrinsic>, Error> {
-		info!("create_inherents starts");
 		let block_id = self.block_id;
 		self.api
 			.execute_in_transaction(move |api| {
