@@ -220,7 +220,7 @@ pub fn new_partial(
 			let uncles =
 				sp_authorship::InherentDataProvider::<<Block as BlockT>::Header>::check_inherents();
 
-			Ok((timestamp, slot, uncles))
+			Ok((slot, timestamp, uncles))
 		},
 		&task_manager.spawn_essential_handle(),
 		config.prometheus_registry(),
@@ -430,7 +430,7 @@ pub fn new_full_base(
 							&parent,
 						)?;
 
-					Ok((timestamp, slot, uncles, storage_proof))
+					Ok((slot, timestamp, uncles, storage_proof))
 				}
 			},
 			force_authoring,
@@ -658,7 +658,7 @@ mod tests {
 						sc_consensus_babe::authorship::claim_slot(slot.into(), &epoch, &keystore)
 							.map(|(digest, _)| digest)
 					{
-						break (babe_pre_digest, epoch_descriptor)
+						break (babe_pre_digest, epoch_descriptor);
 					}
 
 					slot += 1;

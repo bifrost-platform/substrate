@@ -46,7 +46,7 @@ use sp_runtime::{
 	generic::{Digest, DigestItem},
 	traits::Block as BlockT,
 };
-use sp_timestamp::InherentDataProvider as TimestampInherentDataProvider;
+use sp_timestamp::Timestamp;
 use std::{cell::RefCell, task::Poll, time::Duration};
 
 type Item = DigestItem;
@@ -70,6 +70,8 @@ type Mutator = Arc<dyn Fn(&mut TestHeader, Stage) + Send + Sync>;
 
 type BabeBlockImport =
 	PanickingBlockImport<crate::BabeBlockImport<TestBlock, TestClient, Arc<TestClient>>>;
+
+const SLOT_DURATION_MS: u64 = 1000;
 
 #[derive(Clone)]
 struct DummyFactory {
@@ -242,7 +244,7 @@ pub struct TestVerifier {
 			dyn CreateInherentDataProviders<
 				TestBlock,
 				(),
-				InherentDataProviders = (TimestampInherentDataProvider, InherentDataProvider),
+				InherentDataProviders = (InherentDataProvider,),
 			>,
 		>,
 	>,
@@ -335,13 +337,12 @@ impl TestNetFactory for BabeTestNet {
 				client: client.clone(),
 				select_chain: longest_chain,
 				create_inherent_data_providers: Box::new(|_, _| async {
-					let timestamp = TimestampInherentDataProvider::from_system_time();
 					let slot = InherentDataProvider::from_timestamp_and_duration(
-						*timestamp,
-						Duration::from_secs(6),
+						Timestamp::current(),
+						SlotDuration::from_millis(SLOT_DURATION_MS),
 					);
 
-					Ok((timestamp, slot))
+					Ok((slot,))
 				}),
 				config: data.link.config.clone(),
 				epoch_changes: data.link.epoch_changes.clone(),
@@ -448,13 +449,12 @@ fn run_one_test(mutator: impl Fn(&mut TestHeader, Stage) + Send + Sync + 'static
 				env: environ,
 				sync_oracle: DummyOracle,
 				create_inherent_data_providers: Box::new(|_, _| async {
-					let timestamp = TimestampInherentDataProvider::from_system_time();
 					let slot = InherentDataProvider::from_timestamp_and_duration(
-						*timestamp,
-						Duration::from_secs(6),
+						Timestamp::current(),
+						SlotDuration::from_millis(SLOT_DURATION_MS),
 					);
 
-					Ok((timestamp, slot))
+					Ok((slot,))
 				}),
 				force_authoring: false,
 				backoff_authoring_blocks: Some(BackoffAuthoringOnFinalizedHeadLagging::default()),
@@ -596,7 +596,7 @@ fn can_author_block() {
 			None => i += 1,
 			Some(s) => {
 				debug!(target: "babe", "Authored block {:?}", s.0);
-				break
+				break;
 			},
 		}
 	}

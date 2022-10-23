@@ -46,7 +46,6 @@ use sp_runtime::{
 	generic::BlockId,
 	traits::{Block as BlockT, HashFor, Header as HeaderT},
 };
-use sp_timestamp::Timestamp;
 use std::{fmt::Debug, ops::Deref, time::Duration};
 
 /// The changes that need to applied to the storage to create the state for a block.
@@ -192,7 +191,7 @@ pub trait SimpleSlotWorker<B: BlockT> {
 	where
 		Self: Sync,
 	{
-		let (timestamp, slot) = (slot_info.timestamp, slot_info.slot);
+		let slot = slot_info.slot;
 		let telemetry = self.telemetry();
 		let logging_target = self.logging_target();
 
@@ -256,25 +255,14 @@ pub trait SimpleSlotWorker<B: BlockT> {
 			return None
 		}
 
-		debug!(
-			target: self.logging_target(),
-			"Starting authorship at slot {}; timestamp = {}",
-			slot,
-			*timestamp,
-		);
+		debug!(target: logging_target, "Starting authorship at slot: {slot}");
 
-		telemetry!(
-			telemetry;
-			CONSENSUS_DEBUG;
-			"slots.starting_authorship";
-			"slot_num" => *slot,
-			"timestamp" => *timestamp,
-		);
+		telemetry!(telemetry; CONSENSUS_DEBUG; "slots.starting_authorship"; "slot_num" => slot);
 
 		let proposer = match self.proposer(&slot_info.chain_head).await {
 			Ok(p) => p,
 			Err(err) => {
-				warn!(target: logging_target, "Unable to author block in slot {:?}: {}", slot, err,);
+				warn!(target: logging_target, "Unable to author block in slot {slot:?}: {err}");
 
 				telemetry!(
 					telemetry;
@@ -416,44 +404,35 @@ impl<B: BlockT, T: SimpleSlotWorker<B> + Send + Sync>
 
 /// Slot specific extension that the inherent data provider needs to implement.
 pub trait InherentDataProviderExt {
-	/// The current timestamp that will be found in the
-	/// [`InherentData`](`sp_inherents::InherentData`).
-	fn timestamp(&self) -> Timestamp;
-
 	/// The current slot that will be found in the [`InherentData`](`sp_inherents::InherentData`).
 	fn slot(&self) -> Slot;
 }
 
 /// Small macro for implementing `InherentDataProviderExt` for inherent data provider tuple.
 macro_rules! impl_inherent_data_provider_ext_tuple {
-	( T, S $(, $TN:ident)* $( , )?) => {
-		impl<T, S, $( $TN ),*>  InherentDataProviderExt for (T, S, $($TN),*)
+	( S $(, $TN:ident)* $( , )?) => {
+		impl<S, $( $TN ),*>  InherentDataProviderExt for (S, $($TN),*)
 		where
-			T: Deref<Target = Timestamp>,
 			S: Deref<Target = Slot>,
 		{
-			fn timestamp(&self) -> Timestamp {
-				*self.0.deref()
-			}
-
 			fn slot(&self) -> Slot {
-				*self.1.deref()
+				*self.0.deref()
 			}
 		}
 	}
 }
 
-impl_inherent_data_provider_ext_tuple!(T, S);
-impl_inherent_data_provider_ext_tuple!(T, S, A);
-impl_inherent_data_provider_ext_tuple!(T, S, A, B);
-impl_inherent_data_provider_ext_tuple!(T, S, A, B, C);
-impl_inherent_data_provider_ext_tuple!(T, S, A, B, C, D);
-impl_inherent_data_provider_ext_tuple!(T, S, A, B, C, D, E);
-impl_inherent_data_provider_ext_tuple!(T, S, A, B, C, D, E, F);
-impl_inherent_data_provider_ext_tuple!(T, S, A, B, C, D, E, F, G);
-impl_inherent_data_provider_ext_tuple!(T, S, A, B, C, D, E, F, G, H);
-impl_inherent_data_provider_ext_tuple!(T, S, A, B, C, D, E, F, G, H, I);
-impl_inherent_data_provider_ext_tuple!(T, S, A, B, C, D, E, F, G, H, I, J);
+impl_inherent_data_provider_ext_tuple!(S);
+impl_inherent_data_provider_ext_tuple!(S, A);
+impl_inherent_data_provider_ext_tuple!(S, A, B);
+impl_inherent_data_provider_ext_tuple!(S, A, B, C);
+impl_inherent_data_provider_ext_tuple!(S, A, B, C, D);
+impl_inherent_data_provider_ext_tuple!(S, A, B, C, D, E);
+impl_inherent_data_provider_ext_tuple!(S, A, B, C, D, E, F);
+impl_inherent_data_provider_ext_tuple!(S, A, B, C, D, E, F, G);
+impl_inherent_data_provider_ext_tuple!(S, A, B, C, D, E, F, G, H);
+impl_inherent_data_provider_ext_tuple!(S, A, B, C, D, E, F, G, H, I);
+impl_inherent_data_provider_ext_tuple!(S, A, B, C, D, E, F, G, H, I, J);
 
 /// Start a new slot worker.
 ///
@@ -837,7 +816,6 @@ mod test {
 		super::slots::SlotInfo {
 			slot: slot.into(),
 			duration: SLOT_DURATION,
-			timestamp: Default::default(),
 			inherent_data: Default::default(),
 			ends_at: Instant::now() + SLOT_DURATION,
 			chain_head: Header::new(

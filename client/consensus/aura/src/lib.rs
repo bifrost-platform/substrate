@@ -102,7 +102,7 @@ where
 /// Get slot author for given block along with authorities.
 fn slot_author<P: Pair>(slot: Slot, authorities: &[AuthorityId<P>]) -> Option<&AuthorityId<P>> {
 	if authorities.is_empty() {
-		return None
+		return None;
 	}
 
 	let idx = *slot % (authorities.len() as u64);
@@ -445,7 +445,7 @@ where
 					self.client.info().finalized_number,
 					slot,
 					self.logging_target(),
-				)
+				);
 			}
 		}
 		false
@@ -531,7 +531,7 @@ impl<B: BlockT> std::convert::From<Error<B>> for String {
 /// Get pre-digests from the header
 pub fn find_pre_digest<B: BlockT, Signature: Codec>(header: &B::Header) -> Result<Slot, Error<B>> {
 	if header.number().is_zero() {
-		return Ok(0.into())
+		return Ok(0.into());
 	}
 
 	let mut pre_digest: Option<Slot> = None;
@@ -583,7 +583,7 @@ mod tests {
 		traits::{Block as BlockT, Header as _},
 		Digest,
 	};
-	use sp_timestamp::InherentDataProvider as TimestampInherentDataProvider;
+	use sp_timestamp::Timestamp;
 	use std::{
 		task::Poll,
 		time::{Duration, Instant},
@@ -592,6 +592,8 @@ mod tests {
 		runtime::{Header, H256},
 		TestClient,
 	};
+
+	const SLOT_DURATION_MS: u64 = 1000;
 
 	type Error = sp_blockchain::Error;
 
@@ -633,8 +635,6 @@ mod tests {
 		}
 	}
 
-	const SLOT_DURATION: u64 = 1000;
-
 	type AuraVerifier = import_queue::AuraVerifier<
 		PeersFullClient,
 		AuthorityPair,
@@ -643,7 +643,7 @@ mod tests {
 			dyn CreateInherentDataProviders<
 				TestBlock,
 				(),
-				InherentDataProviders = (TimestampInherentDataProvider, InherentDataProvider),
+				InherentDataProviders = (InherentDataProvider,),
 			>,
 		>,
 	>;
@@ -672,17 +672,16 @@ mod tests {
 			let client = client.as_client();
 			let slot_duration = slot_duration(&*client).expect("slot duration available");
 
-			assert_eq!(slot_duration.slot_duration().as_millis() as u64, SLOT_DURATION);
+			assert_eq!(slot_duration.slot_duration().as_millis() as u64, SLOT_DURATION_MS);
 			import_queue::AuraVerifier::new(
 				client,
 				Box::new(|_, _| async {
-					let timestamp = TimestampInherentDataProvider::from_system_time();
 					let slot = InherentDataProvider::from_timestamp_and_duration(
-						*timestamp,
-						Duration::from_secs(6),
+						Timestamp::current(),
+						SlotDuration::from_millis(SLOT_DURATION_MS),
 					);
 
-					Ok((timestamp, slot))
+					Ok((slot,))
 				}),
 				AlwaysCanAuthor,
 				CheckForEquivocation::Yes,
@@ -761,13 +760,12 @@ mod tests {
 					sync_oracle: DummyOracle,
 					justification_sync_link: (),
 					create_inherent_data_providers: |_, _| async {
-						let timestamp = TimestampInherentDataProvider::from_system_time();
 						let slot = InherentDataProvider::from_timestamp_and_duration(
-							*timestamp,
-							Duration::from_secs(6),
+							*Timestamp::current(),
+							SlotDuration::from_millis(SLOT_DURATION_MS),
 						);
 
-						Ok((timestamp, slot))
+						Ok((slot,))
 					},
 					force_authoring: false,
 					backoff_authoring_blocks: Some(
@@ -901,7 +899,6 @@ mod tests {
 
 		let res = executor::block_on(worker.on_slot(SlotInfo {
 			slot: 0.into(),
-			timestamp: 0.into(),
 			ends_at: Instant::now() + Duration::from_secs(100),
 			inherent_data: InherentData::new(),
 			duration: Duration::from_millis(1000),
