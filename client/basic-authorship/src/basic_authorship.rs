@@ -351,7 +351,7 @@ where
 		info!("propose_with function starts: 1");
 		info!("ParentId: {}, ProofRecord: {}", &self.parent_id, PR::ENABLED);
 		let mut block_builder =
-			self.client.new_block_at(&self.parent_id, inherent_digests, PR::ENABLED)?;
+			self.client.new_block_at(&self.parent_id, inherent_digests, true)?;
 		info!("propose_with function starts: 2");
 
 		let create_inherents_start = time::Instant::now();
