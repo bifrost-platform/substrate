@@ -349,6 +349,7 @@ where
 		info!("propose_with function starts");
 		let propose_with_start = time::Instant::now();
 		info!("propose_with function starts: 1");
+		info!("ParentId: {}, ProofRecord: {}", &self.parent_id, PR::ENABLED);
 		let mut block_builder =
 			self.client.new_block_at(&self.parent_id, inherent_digests, PR::ENABLED)?;
 		info!("propose_with function starts: 2");
@@ -410,7 +411,7 @@ where
 		info!("propose_with function starts: 15");
 		let mut t2 =
 			futures_timer::Delay::new(deadline.saturating_duration_since((self.now)()) / 8).fuse();
-			info!("propose_with function starts: 16");
+		info!("propose_with function starts: 16");
 
 		let mut pending_iterator = select! {
 			res = t1 => res,
