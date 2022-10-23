@@ -505,7 +505,7 @@ where
 	let inner = sc_consensus_slots::start_slot_worker(
 		config.0.clone(),
 		select_chain,
-		worker,
+		sc_consensus_slots::SimpleSlotWorkerToSlotWorker(worker),
 		sync_oracle,
 		create_inherent_data_providers,
 	);
