@@ -346,6 +346,7 @@ where
 		block_size_limit: Option<usize>,
 	) -> Result<Proposal<Block, backend::TransactionFor<B, Block>, PR::Proof>, sp_blockchain::Error>
 	{
+		info!("propose_with function starts");
 		let propose_with_start = time::Instant::now();
 		let mut block_builder =
 			self.client.new_block_at(&self.parent_id, inherent_digests, PR::ENABLED)?;
@@ -417,7 +418,7 @@ where
 			let pending_tx = if let Some(pending_tx) = pending_iterator.next() {
 				pending_tx
 			} else {
-				break EndProposingReason::NoMoreTransactions
+				break EndProposingReason::NoMoreTransactions;
 			};
 
 			let now = (self.now)();
@@ -426,7 +427,7 @@ where
 					"Consensus deadline reached when pushing block transactions, \
 					proceeding with proposing."
 				);
-				break EndProposingReason::HitDeadline
+				break EndProposingReason::HitDeadline;
 			}
 
 			let pending_tx_data = pending_tx.data().clone();
@@ -443,17 +444,17 @@ where
 						 but will try {} more transactions before quitting.",
 						MAX_SKIPPED_TRANSACTIONS - skipped,
 					);
-					continue
+					continue;
 				} else if now < soft_deadline {
 					debug!(
 						"Transaction would overflow the block size limit, \
 						 but we still have time before the soft deadline, so \
 						 we will try a bit more."
 					);
-					continue
+					continue;
 				} else {
 					debug!("Reached block size limit, proceeding with proposing.");
-					break EndProposingReason::HitBlockSizeLimit
+					break EndProposingReason::HitBlockSizeLimit;
 				}
 			}
 
@@ -478,7 +479,7 @@ where
 						);
 					} else {
 						debug!("Reached block weight limit, proceeding with proposing.");
-						break EndProposingReason::HitBlockWeightLimit
+						break EndProposingReason::HitBlockWeightLimit;
 					}
 				},
 				Err(e) if skipped > 0 => {
@@ -647,7 +648,7 @@ mod tests {
 				let mut value = cell.lock();
 				if !value.0 {
 					value.0 = true;
-					return value.1
+					return value.1;
 				}
 				let old = value.1;
 				let new = old + time::Duration::from_secs(1);
@@ -691,7 +692,7 @@ mod tests {
 				let mut value = cell.lock();
 				if !value.0 {
 					value.0 = true;
-					return value.1
+					return value.1;
 				}
 				let new = value.1 + time::Duration::from_secs(160);
 				*value = (true, new);
@@ -874,13 +875,13 @@ mod tests {
 			.map(|v| Extrinsic::IncludeData(vec![v as u8; 10]))
 			.collect::<Vec<_>>();
 
-		let block_limit = genesis_header.encoded_size() +
-			extrinsics
+		let block_limit = genesis_header.encoded_size()
+			+ extrinsics
 				.iter()
 				.take(extrinsics_num - 1)
 				.map(Encode::encoded_size)
-				.sum::<usize>() +
-			Vec::<Extrinsic>::new().encoded_size();
+				.sum::<usize>()
+			+ Vec::<Extrinsic>::new().encoded_size();
 
 		block_on(txpool.submit_at(&BlockId::number(0), SOURCE, extrinsics)).unwrap();
 
