@@ -27,6 +27,7 @@
 #![warn(missing_docs)]
 
 use codec::Encode;
+use log::info;
 
 use sp_api::{
 	ApiExt, ApiRef, Core, ProvideRuntimeApi, StorageChanges, StorageProof, TransactionOutcome,
@@ -163,6 +164,7 @@ where
 		inherent_digests: Digest,
 		backend: &'a B,
 	) -> Result<Self, Error> {
+		info!("block builder new : 1");
 		let header = <<Block as BlockT>::Header as HeaderT>::new(
 			parent_number + One::one(),
 			Default::default(),
@@ -170,18 +172,24 @@ where
 			parent_hash,
 			inherent_digests,
 		);
+		info!("block builder new : 2");
 
 		let estimated_header_size = header.encoded_size();
+		info!("block builder new : 3");
 
 		let mut api = api.runtime_api();
+		info!("block builder new : 4");
 
 		if record_proof.yes() {
 			api.record_proof();
 		}
+		info!("block builder new : 5");
 
 		let block_id = BlockId::Hash(parent_hash);
+		info!("block builder new : 6");
 
 		api.initialize_block_with_context(&block_id, ExecutionContext::BlockConstruction, &header)?;
+		info!("block builder new : 7");
 
 		Ok(Self {
 			parent_hash,
