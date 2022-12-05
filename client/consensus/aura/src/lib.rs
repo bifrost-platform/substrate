@@ -103,6 +103,13 @@ fn slot_author<P: Pair>(slot: Slot, authorities: &[AuthorityId<P>]) -> Option<&A
 		return None;
 	}
 
+	// 1. Author that yields output smaller than threshold will produce VRF output
+	// 2. If it is smaller, author of the slot will collect the output through the network. How?
+	// 3. Calculate based on the theory. How?
+	// 4. Final output of the VRF will be inclueded in the header
+	// 5. Verification will be handled based on the theory. How?
+	// 6. This output will be local VRF and will be used in user request VRF
+
 	let idx = *slot % (authorities.len() as u64);
 	assert!(
 		idx <= usize::MAX as u64,
@@ -363,6 +370,8 @@ where
 	) -> Option<Self::Claim> {
 		let expected_author = slot_author::<P>(slot, epoch_data);
 		expected_author.and_then(|p| {
+			// Block author collects VRF output from the other node?
+			// Generates VRF output whose value is below than threshold
 			if SyncCryptoStore::has_keys(
 				&*self.keystore,
 				&[(p.to_raw_vec(), sp_application_crypto::key_types::AURA)],
