@@ -65,6 +65,7 @@ use sp_runtime::{
 };
 
 mod import_queue;
+mod vrf;
 
 pub use import_queue::{
 	build_verifier, import_queue, AuraVerifier, BuildVerifierParams, CheckForEquivocation,

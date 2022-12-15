@@ -8029,6 +8029,7 @@ dependencies = [
  "sc-consensus-slots",
  "sc-keystore",
  "sc-network",
+ "sc-network-gossip",
  "sc-network-test",
  "sc-telemetry",
  "sp-api",
