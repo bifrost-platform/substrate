@@ -29,7 +29,7 @@ use sp_std::{prelude::*, result::Result};
 /// A value denoting the strength of conviction of a vote.
 #[derive(Encode, Decode, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, RuntimeDebug, TypeInfo)]
 pub enum Conviction {
-	/// 0.1x votes, unlocked.
+	/// 1x votes, unlocked.
 	None,
 	/// 1x votes, locked for an enactment period following a successful vote.
 	Locked1x,
@@ -87,7 +87,7 @@ impl Conviction {
 	pub fn lock_periods(self) -> u32 {
 		match self {
 			Conviction::None => 0,
-			Conviction::Locked1x => 1,
+			Conviction::Locked1x => 0,
 			Conviction::Locked2x => 2,
 			Conviction::Locked3x => 4,
 			Conviction::Locked4x => 8,
