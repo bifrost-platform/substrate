@@ -33,15 +33,15 @@ pub enum Conviction {
 	None,
 	/// 1x votes, locked for an enactment period following a successful vote.
 	Locked1x,
-	/// 2x votes, locked for 2x enactment periods following a successful vote.
+	/// 2x votes, locked for 1x enactment periods following a successful vote.
 	Locked2x,
-	/// 3x votes, locked for 4x...
+	/// 3x votes, locked for 2x...
 	Locked3x,
-	/// 4x votes, locked for 8x...
+	/// 4x votes, locked for 4x...
 	Locked4x,
-	/// 5x votes, locked for 16x...
+	/// 5x votes, locked for 8x...
 	Locked5x,
-	/// 6x votes, locked for 32x...
+	/// 6x votes, locked for 16x...
 	Locked6x,
 }
 
@@ -87,12 +87,12 @@ impl Conviction {
 	pub fn lock_periods(self) -> u32 {
 		match self {
 			Conviction::None => 0,
-			Conviction::Locked1x => 1,
-			Conviction::Locked2x => 2,
-			Conviction::Locked3x => 4,
-			Conviction::Locked4x => 8,
-			Conviction::Locked5x => 16,
-			Conviction::Locked6x => 32,
+			Conviction::Locked1x => 0,
+			Conviction::Locked2x => 1,
+			Conviction::Locked3x => 2,
+			Conviction::Locked4x => 4,
+			Conviction::Locked5x => 8,
+			Conviction::Locked6x => 16,
 		}
 	}
 
