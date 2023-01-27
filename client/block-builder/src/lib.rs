@@ -164,6 +164,7 @@ where
 		inherent_digests: Digest,
 		backend: &'a B,
 	) -> Result<Self, Error> {
+		info!("block builder new : 1");
 		let header = <<Block as BlockT>::Header as HeaderT>::new(
 			parent_number + One::one(),
 			Default::default(),
